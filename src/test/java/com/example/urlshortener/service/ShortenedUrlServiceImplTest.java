@@ -4,8 +4,6 @@ import com.example.urlshortener.UrlShortenerApplication;
 import com.example.urlshortener.model.ShortenedUrl;
 import com.example.urlshortener.model.UrlStatus;
 import com.example.urlshortener.model.User;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +28,6 @@ class ShortenedUrlServiceImplTest {
 
     @Test
     void generateShortUrl() {
-        ShortenedUrl url = shortenedUrlService.findById(1).orElseThrow();
         assertEquals("test-generator", shortenedUrlService.generateShortUrl());
     }
 
