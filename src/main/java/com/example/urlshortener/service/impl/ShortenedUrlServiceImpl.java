@@ -1,5 +1,6 @@
 package com.example.urlshortener.service.impl;
 
+import com.example.urlshortener.audit.LogRunTime;
 import com.example.urlshortener.audit.event.UrlEventEntry;
 import com.example.urlshortener.dto.CreateUrlRequest;
 import com.example.urlshortener.dto.ShortenedUrlDto;
@@ -51,6 +52,7 @@ public class ShortenedUrlServiceImpl implements ShortenedUrlService {
 
     @Override
     @Transactional
+    @LogRunTime
     public ShortenedUrlDto addUrl(CreateUrlRequest request) {
         urlValidator.validate(request.getUrl());
         String code = request.getCode() == null ? "" : request.getCode();

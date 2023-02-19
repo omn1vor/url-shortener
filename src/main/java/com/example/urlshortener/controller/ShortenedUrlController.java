@@ -1,5 +1,6 @@
 package com.example.urlshortener.controller;
 
+import com.example.urlshortener.audit.LogRunTime;
 import com.example.urlshortener.audit.UrlEventService;
 import com.example.urlshortener.audit.event.UrlEventEntry;
 import com.example.urlshortener.dto.ClickEntryDto;
@@ -55,6 +56,7 @@ public class ShortenedUrlController {
     }
 
     @GetMapping("{code}")
+    @LogRunTime
     public ResponseEntity<?> goToUrl(@PathVariable String code, HttpServletRequest request) {
         ShortenedUrlDto dto = urlService.validateForwarding(code);
         clickTrackerService.linkClicked(code, request.getRemoteAddr());
