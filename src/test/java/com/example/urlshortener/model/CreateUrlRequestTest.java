@@ -1,7 +1,7 @@
 package com.example.urlshortener.model;
 
+import com.example.urlshortener.dto.CreateUrlRequest;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -9,27 +9,20 @@ import org.springframework.boot.test.context.SpringBootTest;
 import javax.validation.ConstraintViolation;
 import javax.validation.Validator;
 
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.Locale;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
-class ShortenedUrlDtoTest {
+class CreateUrlRequestTest {
 
-    @Autowired Validator validator;
+    @Autowired
+    Validator validator;
+    @Autowired
+    CreateUrlRequest validUrlRequest;
+
     private static final Locale defaultLocale = Locale.getDefault();
-    ShortenedUrlDto dto;
-
-    @BeforeEach
-    public void SetUp() throws MalformedURLException {
-        dto = new ShortenedUrlDto();
-        dto.setShortUrl("hello");
-        dto.setUrl(new URL("http:/google.com"));
-        dto.setEmail("test@test.com");
-    }
 
     @AfterEach
     public void tearDown() {
@@ -39,14 +32,15 @@ class ShortenedUrlDtoTest {
 
     @Test
     public void testValidUrlDto() {
-        Set<ConstraintViolation<ShortenedUrlDto>> violations = validator.validate(dto);
+        Set<ConstraintViolation<CreateUrlRequest>> violations = validator.validate(validUrlRequest);
         assertTrue(violations.isEmpty());
     }
 
     @Test
     public void testInvalidEmail() {
-        dto.setEmail("invalidEmail");
-        Set<ConstraintViolation<ShortenedUrlDto>> violations = validator.validate(dto);
+        CreateUrlRequest request = new CreateUrlRequest(validUrlRequest);
+        request.setEmail("invalidEmail");
+        Set<ConstraintViolation<CreateUrlRequest>> violations = validator.validate(request);
         assertEquals(1, violations.size());
         var violation = violations.stream().findAny().orElseThrow();
         assertEquals("Should be valid e-mail address", violation.getMessage());
@@ -54,9 +48,10 @@ class ShortenedUrlDtoTest {
 
     @Test
     public void testInvalidEmailRu() {
-        dto.setEmail("invalidEmail");
+        CreateUrlRequest request = new CreateUrlRequest(validUrlRequest);
+        request.setEmail("invalidEmail");
         Locale.setDefault(Locale.forLanguageTag("ru"));
-        Set<ConstraintViolation<ShortenedUrlDto>> violations = validator.validate(dto);
+        Set<ConstraintViolation<CreateUrlRequest>> violations = validator.validate(request);
         assertEquals(1, violations.size());
         var violation = violations.stream().findAny().orElseThrow();
         assertEquals("Должен быть указан корректный e-mail", violation.getMessage());

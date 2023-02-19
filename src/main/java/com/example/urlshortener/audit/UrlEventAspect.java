@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Configuration;
 
+// It's not working because it expects ShortenedUrl but gets a dto instead.
+// But I want to keep this as an example
 @Configuration
 @Aspect
 public class UrlEventAspect {
@@ -37,7 +39,7 @@ public class UrlEventAspect {
         if (result instanceof ShortenedUrl url) {
             context.publishEvent(
                     new UrlEventEntry(url, UrlEventType.CREATED,
-                            String.format("Short URL %s created by user %s", url.getShortUrl(), url.getEmail())
+                            String.format("Short URL %s created by user %s", url.getCode(), url.getEmail())
                     )
             );
         }
@@ -52,7 +54,7 @@ public class UrlEventAspect {
         if (result instanceof ShortenedUrl url) {
             context.publishEvent(
                     new UrlEventEntry(url, UrlEventType.DISABLED,
-                            String.format("Short URL %s disabled by user %s", url.getShortUrl(), url.getEmail())
+                            String.format("Short URL %s disabled by user %s", url.getCode(), url.getEmail())
                     )
             );
         }
@@ -67,7 +69,7 @@ public class UrlEventAspect {
         if (result instanceof ShortenedUrl url) {
             context.publishEvent(
                     new UrlEventEntry(url, UrlEventType.MODIFIED,
-                            String.format("Short URL %s modified by user %s", url.getShortUrl(), url.getEmail())
+                            String.format("Short URL %s modified by user %s", url.getCode(), url.getEmail())
                     )
             );
         }

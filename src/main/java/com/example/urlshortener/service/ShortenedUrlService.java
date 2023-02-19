@@ -1,20 +1,29 @@
 package com.example.urlshortener.service;
 
-import com.example.urlshortener.model.ShortenedUrl;
-import com.example.urlshortener.model.ShortenedUrlDto;
+import com.example.urlshortener.dto.CreateUrlRequest;
+import com.example.urlshortener.dto.ShortenedUrlDto;
 import com.example.urlshortener.model.User;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 public interface ShortenedUrlService {
     String generateShortUrl();
-    ShortenedUrl addUrl(ShortenedUrlDto shortenedUrlDto);
-    ShortenedUrl addUrl(ShortenedUrl shortenedUrl);
-    ShortenedUrl activate(String shortUrl);
-    ShortenedUrl deactivate(String shortUrl);
-    Optional<ShortenedUrl> findById(long id);
-    List<ShortenedUrl> findByUser(User user);
-    List<ShortenedUrl> findByPeriod(LocalDateTime from, LocalDateTime to);
+
+    ShortenedUrlDto addUrl(CreateUrlRequest request);
+
+    ShortenedUrlDto createOrReplace(CreateUrlRequest request, String code);
+
+    ShortenedUrlDto update(String code, JsonNode patch);
+
+    ShortenedUrlDto activate(String code);
+
+    ShortenedUrlDto deactivate(String code);
+
+    ShortenedUrlDto findByCode(String code);
+
+    List<ShortenedUrlDto> findByUser(User user);
+
+    List<ShortenedUrlDto> findByPeriod(LocalDateTime from, LocalDateTime to);
 }

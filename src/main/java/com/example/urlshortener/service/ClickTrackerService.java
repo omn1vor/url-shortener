@@ -1,7 +1,11 @@
 package com.example.urlshortener.service;
 
-import com.example.urlshortener.model.ShortenedUrl;
+import com.example.urlshortener.dto.ClickEntryDto;
+
+import java.util.List;
 
 public interface ClickTrackerService {
-    void linkClicked(ShortenedUrl url, String ip);
+    void linkClicked(String code, String ip);
+
+    List<ClickEntryDto> getClicks(String code, Integer limit);
 }

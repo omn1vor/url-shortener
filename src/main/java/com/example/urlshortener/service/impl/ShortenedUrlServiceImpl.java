@@ -1,21 +1,32 @@
 package com.example.urlshortener.service.impl;
 
-import com.example.urlshortener.model.ShortenedUrl;
-import com.example.urlshortener.model.ShortenedUrlDto;
-import com.example.urlshortener.model.UrlStatus;
-import com.example.urlshortener.model.User;
-import com.example.urlshortener.service.ShortUrlGenerator;
-import com.example.urlshortener.service.ShortenedUrlService;
-import com.example.urlshortener.service.UserService;
+import com.example.urlshortener.audit.event.UrlEventEntry;
+import com.example.urlshortener.dto.CreateUrlRequest;
+import com.example.urlshortener.dto.ShortenedUrlDto;
+import com.example.urlshortener.exception.CodeNotFoundException;
+import com.example.urlshortener.model.*;
+import com.example.urlshortener.service.*;
 import com.example.urlshortener.service.storage.ShortenedUrlRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.github.fge.jsonpatch.JsonPatchException;
+import com.github.fge.jsonpatch.mergepatch.JsonMergePatch;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import javax.transaction.Transactional;
 import java.time.LocalDateTime;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class ShortenedUrlServiceImpl implements ShortenedUrlService {
@@ -27,41 +38,110 @@ public class ShortenedUrlServiceImpl implements ShortenedUrlService {
     @Autowired
     private ModelMapper modelMapper;
     @Autowired
-    private ShortUrlGenerator shortUrlGenerator;
+    private ShortUrlGenerator codeGenerator;
+    @Autowired
+    private ExceptionBuilder exceptionBuilder;
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
+    @Autowired
+    private UrlValidator urlValidator;
 
     @Override
     public String generateShortUrl() {
-        return shortUrlGenerator.generate();
+        return codeGenerator.generate();
     }
 
     @Override
     @Transactional
-    public ShortenedUrl addUrl(ShortenedUrlDto shortenedUrlDto) {
-        ShortenedUrl url = convertUrlToEntity(shortenedUrlDto);
-        url.setCreated(LocalDateTime.now());
-        return urlRepository.save(url);
-    }
+    public ShortenedUrlDto addUrl(CreateUrlRequest request) {
+        urlValidator.validate(request.getUrl());
+        String code = request.getCode() == null ? "" : request.getCode();
 
-    @Override
-    @Transactional
-    public ShortenedUrl addUrl(ShortenedUrl url) {
-        url.setCreated(LocalDateTime.now());
-        if (url.getShortUrl().isBlank())
-            url.setShortUrl(generateShortUrl());
-        return urlRepository.save(url);
-    }
+        if (code.isBlank()) {
+            request.setCode(generateShortUrl());
+        } else {
+            if (urlRepository.existsByCode(code)) {
+                throw exceptionBuilder.codeAlreadyExists(code);
+            }
+        }
+        ShortenedUrl url = convertUrlToEntity(request);
 
-    private ShortenedUrl convertUrlToEntity(ShortenedUrlDto dto) {
-        ShortenedUrl url = modelMapper.map(dto, ShortenedUrl.class);
-
-        User user = userService.findByEmail(dto.getEmail())
-                .orElse(new User(dto.getEmail()));
+        User user = userService.findByEmail(request.getEmail()).orElse(null);
+        if (user == null) {
+            user = new User(request.getEmail());
+        }
         url.setAuthor(user);
 
-        if (url.getShortUrl().isBlank())
-            url.setShortUrl(generateShortUrl());
+        url.setCreated(LocalDateTime.now());
+        url = urlRepository.saveAndFlush(url);
+        eventPublisher.publishEvent(UrlEventEntry.creation(url));
+        return convertUrlToDto(url);
+    }
 
-        return url;
+    @Override
+    @Transactional
+    public ShortenedUrlDto createOrReplace(CreateUrlRequest request, String code) {
+        urlValidator.validate(request.getUrl());
+        Optional<ShortenedUrl> foundUrl = urlRepository.findByCode(code);
+        if (foundUrl.isEmpty()) {
+            CreateUrlRequest copy = new CreateUrlRequest(request);
+            copy.setCode(code);
+            return addUrl(copy);
+        }
+
+        ShortenedUrl url = foundUrl.get();
+        url.setCode(code);
+        url = urlRepository.saveAndFlush(url);
+        eventPublisher.publishEvent(UrlEventEntry.modification(url, "Overwritten via PUT method"));
+        return convertUrlToDto(url);
+    }
+
+    @Transactional
+    @Override
+    public ShortenedUrlDto update(String code, JsonNode patch) {
+        ShortenedUrl url = urlRepository.findByCode(code)
+                .orElseThrow(() -> exceptionBuilder.codeNotFound(code));
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+
+        Set<String> allowedFields = Set.of("url", "author");
+        Iterator<String> fieldNames = patch.fieldNames();
+        while (fieldNames.hasNext()) {
+            String fieldName = fieldNames.next();
+            if (!allowedFields.contains(fieldName)) {
+                throw exceptionBuilder.illegalFieldModification(fieldName);
+            }
+        }
+
+        try {
+            url = patchUrl(url, patch);
+        } catch (JsonPatchException | JsonProcessingException e) {
+            throw exceptionBuilder.wrongPatchFormat();
+        }
+
+        urlValidator.validate(url.getUrl());
+        url = urlRepository.saveAndFlush(url);
+        eventPublisher.publishEvent(UrlEventEntry.modification(url, "Updated via PATCH method"));
+        return convertUrlToDto(url);
+    }
+
+    private ShortenedUrl patchUrl(ShortenedUrl url, JsonNode patch)
+            throws JsonPatchException, JsonProcessingException {
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        objectMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+
+        JsonMergePatch jsonPatch = JsonMergePatch.fromJson(patch);
+
+        JsonNode originalUrl = objectMapper.valueToTree(url);
+        JsonNode patched = jsonPatch.apply(originalUrl);
+        return objectMapper.treeToValue(patched, ShortenedUrl.class);
+    }
+
+    private ShortenedUrl convertUrlToEntity(CreateUrlRequest dto) {
+        return modelMapper.map(dto, ShortenedUrl.class);
     }
 
     private ShortenedUrlDto convertUrlToDto(ShortenedUrl url) {
@@ -71,34 +151,45 @@ public class ShortenedUrlServiceImpl implements ShortenedUrlService {
     }
 
     @Override
-    public ShortenedUrl activate(String shortUrl) {
-        return setStatus(shortUrl, UrlStatus.ACTIVE);
+    public ShortenedUrlDto findByCode(String code) {
+        ShortenedUrl url = urlRepository.findByCode(code)
+                .orElseThrow(() -> new CodeNotFoundException("{errors.ShortUrlNotFound}: " + code));
+
+        return convertUrlToDto(url);
     }
 
     @Override
-    public ShortenedUrl deactivate(String shortUrl) {
-        return setStatus(shortUrl, UrlStatus.INACTIVE);
+    public ShortenedUrlDto activate(String code) {
+        ShortenedUrl url = setStatus(code, UrlStatus.ACTIVE);
+        eventPublisher.publishEvent(UrlEventEntry.modification(url, "set active"));
+        return convertUrlToDto(url);
     }
 
     @Override
-    public Optional<ShortenedUrl> findById(long id) {
-        return urlRepository.findById(id);
+    public ShortenedUrlDto deactivate(String code) {
+        ShortenedUrl url = setStatus(code, UrlStatus.INACTIVE);
+        eventPublisher.publishEvent(UrlEventEntry.deactivation(url));
+        return convertUrlToDto(url);
     }
 
     @Override
-    public List<ShortenedUrl> findByUser(User user) {
-        return urlRepository.findAllByAuthor(user);
+    public List<ShortenedUrlDto> findByUser(User user) {
+        return urlRepository.findAllByAuthor(user).stream()
+                .map(this::convertUrlToDto)
+                .toList();
     }
 
     @Override
-    public List<ShortenedUrl> findByPeriod(LocalDateTime from, LocalDateTime to) {
-        return urlRepository.findAllByCreatedBetweenOrderByCreated(from, to);
+    public List<ShortenedUrlDto> findByPeriod(LocalDateTime from, LocalDateTime to) {
+        return urlRepository.findAllByCreatedBetweenOrderByCreated(from, to).stream()
+                .map(this::convertUrlToDto)
+                .toList();
     }
 
-    private ShortenedUrl setStatus(String shortUrl, UrlStatus status) {
-        ShortenedUrl url = urlRepository.findByShortUrl(shortUrl)
-                .orElseThrow(() -> new IllegalArgumentException("{errors.ShortUrlNotFound}: " + shortUrl));
+    private ShortenedUrl setStatus(String code, UrlStatus status) {
+        ShortenedUrl url = urlRepository.findByCode(code)
+                .orElseThrow(() -> new IllegalArgumentException("{errors.ShortUrlNotFound}: " + code));
         url.setStatus(status);
-        return urlRepository.save(url);
+        return urlRepository.saveAndFlush(url);
     }
 }

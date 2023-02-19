@@ -9,8 +9,12 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ShortenedUrlRepository extends JpaRepository<ShortenedUrl, Long> {
-    Optional<ShortenedUrl> findByShortUrl(String shortUrl);
+    Optional<ShortenedUrl> findByCode(String code);
+
+    boolean existsByCode(String code);
+
     List<ShortenedUrl> findAllByAuthor(User user);
+
     List<ShortenedUrl> findAllByCreatedBetweenOrderByCreated(LocalDateTime from, LocalDateTime to);
 }
 

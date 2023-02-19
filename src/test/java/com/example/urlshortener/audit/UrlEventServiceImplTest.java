@@ -3,11 +3,9 @@ package com.example.urlshortener.audit;
 import com.example.urlshortener.UrlShortenerApplication;
 import com.example.urlshortener.audit.event.UrlEventEntry;
 import com.example.urlshortener.audit.event.UrlEventType;
-import com.example.urlshortener.model.ShortenedUrl;
-import com.example.urlshortener.model.User;
+import com.example.urlshortener.dto.CreateUrlRequest;
+import com.example.urlshortener.dto.ShortenedUrlDto;
 import com.example.urlshortener.service.ShortenedUrlService;
-import org.aspectj.lang.annotation.Before;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +13,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
 
 import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -27,22 +24,19 @@ class UrlEventServiceImplTest {
 
     @Autowired
     UrlEventService urlEventService;
-
     @Autowired
     ShortenedUrlService shortenedUrlService;
+    @Autowired
+    CreateUrlRequest validUrlRequest;
 
     @Test
-    public void testLogging() throws MalformedURLException {
+    public void testLogging() {
+        CreateUrlRequest request = new CreateUrlRequest(validUrlRequest);
+        request.setCode("");
+
         long numberOfEvents = urlEventService.findLast100().size();
 
-        User existingUser = shortenedUrlService.findById(1).get().getAuthor();
-
-        // Adding link
-        ShortenedUrl url = new ShortenedUrl();
-        url.setShortUrl("gagaga");
-        url.setUrl(new URL("https://www.google.com/"));
-        url.setAuthor(existingUser);
-        shortenedUrlService.addUrl(url);
+        ShortenedUrlDto url = shortenedUrlService.addUrl(request);
 
         List<UrlEventEntry> events = urlEventService.findLast100();
         assertEquals(events.get(0).getType(), UrlEventType.CREATED);
@@ -51,7 +45,7 @@ class UrlEventServiceImplTest {
         assertEquals(numberOfEvents + 1, newNumberOfEvents);
 
         // Deactivating link
-        url = shortenedUrlService.deactivate(url.getShortUrl());
+        url = shortenedUrlService.deactivate(url.getCode());
         numberOfEvents = newNumberOfEvents;
 
         events = urlEventService.findLast100();
@@ -61,7 +55,7 @@ class UrlEventServiceImplTest {
         assertEquals(numberOfEvents + 1, newNumberOfEvents);
 
         // Modifying link
-        shortenedUrlService.activate(url.getShortUrl());
+        shortenedUrlService.activate(url.getCode());
         numberOfEvents = newNumberOfEvents;
 
         events = urlEventService.findLast100();

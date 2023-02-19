@@ -1,30 +1,39 @@
 package com.example.urlshortener.service;
 
 import com.example.urlshortener.UrlShortenerApplication;
-import com.example.urlshortener.model.ShortenedUrl;
+import com.example.urlshortener.dto.CreateUrlRequest;
+import com.example.urlshortener.dto.ShortenedUrlDto;
+import com.example.urlshortener.exception.ShortUrlException;
+import com.example.urlshortener.exception.UrlNotValidException;
 import com.example.urlshortener.model.UrlStatus;
 import com.example.urlshortener.model.User;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Profile;
 import org.springframework.test.annotation.DirtiesContext;
 
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest(classes = UrlShortenerApplication.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_CLASS)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Profile("dev")
 class ShortenedUrlServiceImplTest {
 
     @Autowired
     ShortenedUrlService shortenedUrlService;
+    @Autowired
+    UserService userService;
+    @Autowired
+    CreateUrlRequest validUrlRequest;
+
+    final String existingCode = "severus";
+    final String existingEmail = "hermione@thatschool.com";
 
     @Test
     void generateShortUrl() {
@@ -32,67 +41,63 @@ class ShortenedUrlServiceImplTest {
     }
 
     @Test
-    void addUrl() throws MalformedURLException {
-        ShortenedUrl url = shortenedUrlService.findById(3).orElseThrow();
-        User user = url.getAuthor();
+    void addUrl() {
+        CreateUrlRequest request = new CreateUrlRequest(validUrlRequest);
+        ShortenedUrlDto dto = shortenedUrlService.addUrl(request);
 
-        url = new ShortenedUrl();
-        url.setUrl(new URL("https://www.google.com/"));
-        url.setAuthor(user);
-        url.setShortUrl("seve1");
-        url = shortenedUrlService.addUrl(url);
-
-        assertNotEquals(0, url.getId());
+        assertNotEquals(0, dto.getId());
     }
 
     @Test
-    void addUrlNoShortUrl() throws MalformedURLException {
-        ShortenedUrl url = shortenedUrlService.findById(3).orElseThrow();
-        User user = url.getAuthor();
+    void addBadUrl() {
+        CreateUrlRequest request = new CreateUrlRequest(validUrlRequest);
+        request.setUrl("hello");
 
-        url = new ShortenedUrl();
-        url.setUrl(new URL("https://www.google.com/"));
-        url.setAuthor(user);
-        url = shortenedUrlService.addUrl(url);
+        assertThrows(UrlNotValidException.class, () -> shortenedUrlService.addUrl(request));
+    }
 
-        assertNotEquals(0, url.getId());
-        assertEquals("test-generator", url.getShortUrl());
+    @Test
+    void addExistingUrl() {
+        CreateUrlRequest request = new CreateUrlRequest(validUrlRequest);
+        request.setCode(existingCode);
+        assertThrows(ShortUrlException.class, () -> shortenedUrlService.addUrl(request));
+    }
+
+    @Test
+    void addUrlNoShortUrl() {
+        CreateUrlRequest request = new CreateUrlRequest(validUrlRequest);
+        request.setCode("");
+        ShortenedUrlDto dto = shortenedUrlService.addUrl(request);
+
+        assertNotEquals(0, dto.getId());
+        assertEquals("test-generator", dto.getCode());
     }
 
     @Test
     void activate() {
-        ShortenedUrl url = shortenedUrlService.findById(1).orElseThrow();
-        url = shortenedUrlService.activate(url.getShortUrl());
-        assertEquals(UrlStatus.ACTIVE, url.getStatus());
+        ShortenedUrlDto dto = shortenedUrlService.activate(existingCode);
+        assertEquals(UrlStatus.ACTIVE, dto.getStatus());
     }
 
     @Test
     void deactivate() {
-        ShortenedUrl url = shortenedUrlService.findById(2).orElseThrow();
-        url = shortenedUrlService.deactivate(url.getShortUrl());
-        assertEquals(UrlStatus.INACTIVE, url.getStatus());
-    }
-
-    @Test
-    void findById() {
-        Optional<ShortenedUrl> urlResult = shortenedUrlService.findById(1);
-        assertTrue(urlResult.isPresent());
+        ShortenedUrlDto dto = shortenedUrlService.deactivate(existingCode);
+        assertEquals(UrlStatus.INACTIVE, dto.getStatus());
     }
 
     @Test
     void findByUser() {
-        Optional<ShortenedUrl> urlResult = shortenedUrlService.findById(1);
-        assertTrue(urlResult.isPresent());
-
-        List<ShortenedUrl> urls = shortenedUrlService.findByUser(urlResult.get().getAuthor());
+        User user = userService.findByEmail(existingEmail)
+                .orElseThrow();
+        List<ShortenedUrlDto> urls = shortenedUrlService.findByUser(user);
         assertEquals(2, urls.size());
     }
 
     @Test
     void findByPeriod() {
-        LocalDateTime from = LocalDateTime.of(2023, 2, 1, 0, 0, 0);
-        LocalDateTime to = LocalDateTime.of(2023, 2, 10, 0, 0, 0);
-        List<ShortenedUrl> urls = shortenedUrlService.findByPeriod(from, to);
+        LocalDateTime from = LocalDateTime.of(2022, 2, 1, 0, 0, 0);
+        LocalDateTime to = LocalDateTime.of(2022, 2, 10, 0, 0, 0);
+        List<ShortenedUrlDto> urls = shortenedUrlService.findByPeriod(from, to);
         assertEquals(1, urls.size());
     }
 

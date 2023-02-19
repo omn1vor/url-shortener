@@ -3,6 +3,7 @@ package com.example.urlshortener.audit.impl;
 import com.example.urlshortener.audit.UrlEventRepository;
 import com.example.urlshortener.audit.UrlEventService;
 import com.example.urlshortener.audit.event.UrlEventEntry;
+import com.example.urlshortener.service.ExceptionBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -16,9 +17,14 @@ public class UrlEventServiceImpl implements UrlEventService {
     private UrlEventRepository urlEventRepository;
 
     @Override
-    @EventListener()
+    @EventListener
     public void logEvent(UrlEventEntry eventEntry) {
         urlEventRepository.save(eventEntry);
+    }
+
+    @Override
+    public List<UrlEventEntry> findByCode(String code) {
+        return urlEventRepository.findTop100ByUrl_CodeOrderByDateDesc(code);
     }
 
     public List<UrlEventEntry> findByPeriod(LocalDateTime from, LocalDateTime to) {
@@ -28,4 +34,5 @@ public class UrlEventServiceImpl implements UrlEventService {
     public List<UrlEventEntry> findLast100() {
         return urlEventRepository.findTop100ByOrderByDateDesc();
     }
+
 }

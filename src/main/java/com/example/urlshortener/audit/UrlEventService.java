@@ -7,6 +7,10 @@ import java.util.List;
 
 public interface UrlEventService {
     void logEvent(UrlEventEntry eventEntry);
+
+    List<UrlEventEntry> findByCode(String code);
+
     List<UrlEventEntry> findByPeriod(LocalDateTime from, LocalDateTime to);
+
     List<UrlEventEntry> findLast100();
 }
