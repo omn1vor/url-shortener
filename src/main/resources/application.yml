@@ -32,4 +32,8 @@ spring:
     activate:
       on-profile: prod
 
+rest:
+  output:
+    max-clicks-number: 200
+
 debug: false

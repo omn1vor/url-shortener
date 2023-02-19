@@ -3,7 +3,6 @@ package com.example.urlshortener.service.impl;
 import com.example.urlshortener.audit.event.UrlEventEntry;
 import com.example.urlshortener.dto.CreateUrlRequest;
 import com.example.urlshortener.dto.ShortenedUrlDto;
-import com.example.urlshortener.exception.CodeNotFoundException;
 import com.example.urlshortener.model.*;
 import com.example.urlshortener.service.*;
 import com.example.urlshortener.service.storage.ShortenedUrlRepository;
@@ -17,11 +16,10 @@ import com.github.fge.jsonpatch.mergepatch.JsonMergePatch;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.annotation.Transactional;
 
-import javax.transaction.Transactional;
 import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.List;
@@ -96,8 +94,38 @@ public class ShortenedUrlServiceImpl implements ShortenedUrlService {
         return convertUrlToDto(url);
     }
 
-    @Transactional
     @Override
+    public ShortenedUrlDto validateForwarding(String code) {
+        ShortenedUrlDto dto = findByCode(code);
+        if (dto.getStatus() != UrlStatus.ACTIVE) {
+            throw exceptionBuilder.urlDeactivated(code);
+        }
+        return dto;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ShortenedUrlDto> findByEmailOldFirst(String email) {
+        return urlRepository.findAllByAuthor_Email(email, Sort.by(Sort.Order.asc("created")))
+                .map(this::convertUrlToDto)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ShortenedUrlDto> findByEmailNewFirst(String email) {
+        return urlRepository.findAllByAuthor_Email(email, Sort.by(Sort.Order.desc("created")))
+                .map(this::convertUrlToDto)
+                .toList();
+    }
+
+    @Override
+    public long getCountOfUrls(String email) {
+        return urlRepository.countAllByAuthor_Email(email);
+    }
+
+    @Override
+    @Transactional
     public ShortenedUrlDto update(String code, JsonNode patch) {
         ShortenedUrl url = urlRepository.findByCode(code)
                 .orElseThrow(() -> exceptionBuilder.codeNotFound(code));
@@ -153,12 +181,13 @@ public class ShortenedUrlServiceImpl implements ShortenedUrlService {
     @Override
     public ShortenedUrlDto findByCode(String code) {
         ShortenedUrl url = urlRepository.findByCode(code)
-                .orElseThrow(() -> new CodeNotFoundException("{errors.ShortUrlNotFound}: " + code));
+                .orElseThrow(() -> exceptionBuilder.codeNotFound(code));
 
         return convertUrlToDto(url);
     }
 
     @Override
+    @Transactional
     public ShortenedUrlDto activate(String code) {
         ShortenedUrl url = setStatus(code, UrlStatus.ACTIVE);
         eventPublisher.publishEvent(UrlEventEntry.modification(url, "set active"));
@@ -166,6 +195,7 @@ public class ShortenedUrlServiceImpl implements ShortenedUrlService {
     }
 
     @Override
+    @Transactional
     public ShortenedUrlDto deactivate(String code) {
         ShortenedUrl url = setStatus(code, UrlStatus.INACTIVE);
         eventPublisher.publishEvent(UrlEventEntry.deactivation(url));
@@ -173,13 +203,7 @@ public class ShortenedUrlServiceImpl implements ShortenedUrlService {
     }
 
     @Override
-    public List<ShortenedUrlDto> findByUser(User user) {
-        return urlRepository.findAllByAuthor(user).stream()
-                .map(this::convertUrlToDto)
-                .toList();
-    }
-
-    @Override
+    @Transactional(readOnly = true)
     public List<ShortenedUrlDto> findByPeriod(LocalDateTime from, LocalDateTime to) {
         return urlRepository.findAllByCreatedBetweenOrderByCreated(from, to).stream()
                 .map(this::convertUrlToDto)

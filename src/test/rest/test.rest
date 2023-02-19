@@ -245,6 +245,19 @@ Content-Type: application/json
     });
 %}
 
+
+### Getting redirect to deactivated link
+
+GET http://localhost:8080/herm
+Content-Type: application/json
+
+> {%
+    client.test("Request resulted in 400", function() {
+        client.assert(response.status === 400, "Response status is not 400");
+    });
+%}
+
+
 ### Getting audit events for an url code
 
 GET http://localhost:8080/myCode/events
@@ -267,6 +280,7 @@ Content-Type: application/json
     });
 %}
 
+
 ### Getting clicks
 
 GET http://localhost:8080/myCode/clicks
@@ -280,11 +294,70 @@ Content-Type: application/json
 
 ### Getting clicks with limit set too high
 
-GET http://localhost:8080/myCode/clicks?limit=101
+GET http://localhost:8080/myCode/clicks?limit=102
 Content-Type: application/json
 
 > {%
     client.test("Request resulted in 400", function() {
+        client.assert(response.status === 400, "Response status is not 400");
+    });
+%}
+
+### Getting users
+
+GET http://localhost:8080/users
+Content-Type: application/json
+
+> {%
+    client.test("Request executed successfully", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.assert(response.body.length >= 2);
+    });
+%}
+
+### Getting the count of user's links
+
+GET http://localhost:8080/users/hermione@thatschool.com
+Content-Type: application/json
+
+> {%
+    client.test("Request executed successfully", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.assert(response.body >= 2);
+    });
+%}
+
+### Getting all URLs by email, new first (default)
+GET http://localhost:8080/users/hermione@thatschool.com/links
+Content-Type: application/json
+
+> {%
+    client.test("Request executed successfully", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.assert(response.body.length >= 2);
+        client.assert(response.body[0].created > response.body[1].created);
+    });
+%}
+
+### Getting all URLs by email, old first
+GET http://localhost:8080/users/hermione@thatschool.com/links?sort=asc
+Content-Type: application/json
+
+> {%
+    client.test("Request executed successfully", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.assert(response.body.length >= 2);
+        client.assert(response.body[0].created < response.body[1].created);
+    });
+%}
+
+### Getting all URLs by email, wrong sort parameter
+GET http://localhost:8080/users/hermione@thatschool.com/links?sort=dunno
+Content-Type: application/json
+Accept-Language: ru
+
+> {%
+    client.test("Request resulted in status 400", function() {
         client.assert(response.status === 400, "Response status is not 400");
     });
 %}

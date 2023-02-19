@@ -53,4 +53,11 @@ public class ExceptionBuilderImpl implements ExceptionBuilder {
 				null,
 				LocaleContextHolder.getLocale()));
 	}
+
+	@Override
+	public UrlDeactivatedException urlDeactivated(String code) {
+		throw new UrlDeactivatedException(messageSource.getMessage("code.deactivated",
+				new Object[]{code},
+				LocaleContextHolder.getLocale()));
+	}
 }

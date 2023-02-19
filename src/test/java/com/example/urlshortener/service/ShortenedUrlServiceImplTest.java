@@ -4,9 +4,9 @@ import com.example.urlshortener.UrlShortenerApplication;
 import com.example.urlshortener.dto.CreateUrlRequest;
 import com.example.urlshortener.dto.ShortenedUrlDto;
 import com.example.urlshortener.exception.ShortUrlException;
+import com.example.urlshortener.exception.UrlDeactivatedException;
 import com.example.urlshortener.exception.UrlNotValidException;
 import com.example.urlshortener.model.UrlStatus;
-import com.example.urlshortener.model.User;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -86,10 +86,20 @@ class ShortenedUrlServiceImplTest {
     }
 
     @Test
+    void validateActivated() {
+        shortenedUrlService.activate(existingCode);
+        assertDoesNotThrow(() -> shortenedUrlService.validateForwarding(existingCode));
+    }
+
+    @Test
+    void validateDeactivated() {
+        shortenedUrlService.deactivate(existingCode);
+        assertThrows(UrlDeactivatedException.class, () -> shortenedUrlService.validateForwarding(existingCode));
+    }
+
+    @Test
     void findByUser() {
-        User user = userService.findByEmail(existingEmail)
-                .orElseThrow();
-        List<ShortenedUrlDto> urls = shortenedUrlService.findByUser(user);
+        List<ShortenedUrlDto> urls = shortenedUrlService.findByEmailNewFirst(existingEmail);
         assertEquals(2, urls.size());
     }
 

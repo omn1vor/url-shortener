@@ -6,12 +6,16 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Getter @Setter @NoArgsConstructor
+import java.time.LocalDateTime;
+
+@Getter @Setter
+@NoArgsConstructor
 public class ShortenedUrlDto {
     @JsonIgnore
     private long id;
     private String url;
     private String code;
     private String email;
+    private LocalDateTime created;
     private UrlStatus status = UrlStatus.ACTIVE;
 }

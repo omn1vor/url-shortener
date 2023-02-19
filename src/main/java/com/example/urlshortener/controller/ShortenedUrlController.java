@@ -5,8 +5,10 @@ import com.example.urlshortener.audit.event.UrlEventEntry;
 import com.example.urlshortener.dto.ClickEntryDto;
 import com.example.urlshortener.dto.CreateUrlRequest;
 import com.example.urlshortener.dto.ShortenedUrlDto;
+import com.example.urlshortener.dto.UserDto;
 import com.example.urlshortener.service.ClickTrackerService;
 import com.example.urlshortener.service.ShortenedUrlService;
+import com.example.urlshortener.service.UserService;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -16,7 +18,8 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
-import javax.validation.constraints.Max;
+import javax.validation.constraints.Email;
+import javax.validation.constraints.Pattern;
 import java.net.URI;
 import java.util.List;
 
@@ -31,6 +34,8 @@ public class ShortenedUrlController {
     private UrlEventService urlEventService;
     @Autowired
     private ClickTrackerService clickTrackerService;
+    @Autowired
+    private UserService userService;
 
     @PostMapping()
     public ShortenedUrlDto addUrl(@RequestBody @Valid CreateUrlRequest request) {
@@ -39,19 +44,19 @@ public class ShortenedUrlController {
 
     @PutMapping("{code}")
     public ShortenedUrlDto addShortUrl(@RequestBody @Valid CreateUrlRequest request,
-                                                   @PathVariable String code) {
+                                       @PathVariable String code) {
         return urlService.createOrReplace(request, code);
     }
 
     @PatchMapping(value = "/{code}", consumes = "application/json-patch+json")
     public ShortenedUrlDto update(@RequestBody JsonNode patch,
-                                              @PathVariable String code) {
+                                  @PathVariable String code) {
         return urlService.update(code, patch);
     }
 
     @GetMapping("{code}")
     public ResponseEntity<?> goToUrl(@PathVariable String code, HttpServletRequest request) {
-        ShortenedUrlDto dto = urlService.findByCode(code);
+        ShortenedUrlDto dto = urlService.validateForwarding(code);
         clickTrackerService.linkClicked(code, request.getRemoteAddr());
         return ResponseEntity
                 .status(HttpStatus.FOUND)
@@ -66,8 +71,31 @@ public class ShortenedUrlController {
 
     @GetMapping("{code}/clicks")
     public List<ClickEntryDto> getClicks(@PathVariable String code,
-                                         @RequestParam(required = false) @Max(100) Integer limit) {
+                                         @RequestParam(required = false) Integer limit) {
         return clickTrackerService.getClicks(code, limit);
     }
 
+    @GetMapping("users")
+    public List<UserDto> getUsers() {
+        return userService.findAll();
+    }
+
+    @GetMapping("users/{email}")
+    public long getCountOfUrlsByEmail(@PathVariable @Email String email) {
+        return urlService.getCountOfUrls(email);
+    }
+
+    @GetMapping("users/{email}/links")
+    public List<ShortenedUrlDto> getLinksByEmail(@PathVariable @Email String email,
+                                @RequestParam(required = false)
+                                @Pattern(
+                                        regexp = "asc|desc",
+                                        flags = Pattern.Flag.CASE_INSENSITIVE,
+                                        message = "{sorting.not-match}") String sort) {
+        if (sort == null || "desc".equalsIgnoreCase(sort)) {
+            return urlService.findByEmailNewFirst(email);
+        } else {
+            return urlService.findByEmailOldFirst(email);
+        }
+    }
 }

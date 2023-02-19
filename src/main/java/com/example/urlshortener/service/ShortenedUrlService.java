@@ -2,7 +2,6 @@ package com.example.urlshortener.service;
 
 import com.example.urlshortener.dto.CreateUrlRequest;
 import com.example.urlshortener.dto.ShortenedUrlDto;
-import com.example.urlshortener.model.User;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import java.time.LocalDateTime;
@@ -23,7 +22,13 @@ public interface ShortenedUrlService {
 
     ShortenedUrlDto findByCode(String code);
 
-    List<ShortenedUrlDto> findByUser(User user);
-
     List<ShortenedUrlDto> findByPeriod(LocalDateTime from, LocalDateTime to);
+
+    ShortenedUrlDto validateForwarding(String code);
+
+    long getCountOfUrls(String email);
+
+    List<ShortenedUrlDto> findByEmailOldFirst(String email);
+
+    List<ShortenedUrlDto> findByEmailNewFirst(String email);
 }

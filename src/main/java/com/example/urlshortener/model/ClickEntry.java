@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @Table(name = "CLICKS")
 @Getter @Setter
 public class ClickEntry {
-    @Id @GeneratedValue
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
     @ManyToOne(optional = false)
     private ShortenedUrl url;

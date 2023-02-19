@@ -52,9 +52,8 @@ public class ClickTrackerServiceImpl implements ClickTrackerService {
         if (limit > restOutputConfig.getMaxClicksNumber()) {
             throw exceptionBuilder.outputLimitExceeded(restOutputConfig.getMaxClicksNumber());
         }
-
         Pageable pageRequest = PageRequest.of(0, limit, Sort.by(Sort.Order.desc("date")));
-        return clickEntryRepository.findTop100ByUrl_CodeOrderByDateDesc(code, pageRequest)
+        return clickEntryRepository.findAllByUrl_Code(code, pageRequest)
                 .map(this::convertToDto)
                 .getContent();
     }

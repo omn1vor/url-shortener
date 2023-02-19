@@ -14,4 +14,6 @@ public interface ExceptionBuilder {
 	ShortUrlException outputLimitExceeded(int limit);
 
 	WrongPatchFormatException wrongPatchFormat();
+
+	UrlDeactivatedException urlDeactivated(String code);
 }
