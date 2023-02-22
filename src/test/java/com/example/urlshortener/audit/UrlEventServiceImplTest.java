@@ -11,8 +11,8 @@ import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ActiveProfiles;
 
-import java.net.MalformedURLException;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest(classes = UrlShortenerApplication.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_CLASS)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@ActiveProfiles("dev")
 class UrlEventServiceImplTest {
 
     @Autowired
