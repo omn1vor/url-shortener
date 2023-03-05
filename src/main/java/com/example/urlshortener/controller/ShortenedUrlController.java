@@ -3,7 +3,6 @@ package com.example.urlshortener.controller;
 import com.example.urlshortener.audit.LogRunTime;
 import com.example.urlshortener.audit.UrlEventService;
 import com.example.urlshortener.audit.event.UrlEventEntry;
-import com.example.urlshortener.dto.ClickEntryDto;
 import com.example.urlshortener.dto.CreateUrlRequest;
 import com.example.urlshortener.dto.ShortenedUrlDto;
 import com.example.urlshortener.dto.UserDto;
@@ -75,13 +74,6 @@ public class ShortenedUrlController {
     @Tag(name = "audit")
     public List<UrlEventEntry> getAuditEvents(@PathVariable String code) {
         return urlEventService.findByCode(code);
-    }
-
-    @GetMapping("{code}/clicks")
-    @Tag(name = "audit")
-    public List<ClickEntryDto> getClicks(@PathVariable String code,
-                                         @RequestParam(required = false) Integer limit) {
-        return clickTrackerService.getClicks(code, limit);
     }
 
     @GetMapping("users")

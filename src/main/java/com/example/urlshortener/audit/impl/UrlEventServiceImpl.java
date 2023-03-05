@@ -3,7 +3,6 @@ package com.example.urlshortener.audit.impl;
 import com.example.urlshortener.audit.UrlEventRepository;
 import com.example.urlshortener.audit.UrlEventService;
 import com.example.urlshortener.audit.event.UrlEventEntry;
-import com.example.urlshortener.service.ExceptionBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;

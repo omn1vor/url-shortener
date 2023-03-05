@@ -1,3 +1,6 @@
+spring:
+  application:
+    name: url-shortener
 springdoc:
   swagger-ui:
     path: /swagger
