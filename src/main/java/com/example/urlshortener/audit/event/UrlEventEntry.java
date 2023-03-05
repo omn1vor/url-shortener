@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Table(name = "URL_EVENTS")
 public class UrlEventEntry {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
     @ManyToOne
     private ShortenedUrl url;

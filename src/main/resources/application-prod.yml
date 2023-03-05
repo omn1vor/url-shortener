@@ -3,17 +3,17 @@ spring:
     url: jdbc:mysql://mysql:3306/url-shortener
     username: user
     password: pwd
-    driver-class-name: com.mysql.cj.jdbc.Driver
+
   jpa:
-    database: mysql
-    database-platform: org.hibernate.dialect.MySQLDialect
     show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+    hibernate:
+      ddl-auto: update
+    generate-ddl: true
 rest:
   output:
     max-clicks-number: 200
-
-logging:
-  level:
-    root: debug
 
 debug: false
