@@ -281,28 +281,6 @@ Content-Type: application/json
 %}
 
 
-### Getting clicks
-
-GET http://localhost:8080/myCode/clicks
-Content-Type: application/json
-
-> {%
-    client.test("Request executed successfully", function() {
-        client.assert(response.status === 200, "Response status is not 200");
-    });
-%}
-
-### Getting clicks with limit set too high
-
-GET http://localhost:8080/myCode/clicks?limit=102
-Content-Type: application/json
-
-> {%
-    client.test("Request resulted in 400", function() {
-        client.assert(response.status === 400, "Response status is not 400");
-    });
-%}
-
 ### Getting users
 
 GET http://localhost:8080/users
