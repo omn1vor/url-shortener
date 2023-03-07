@@ -5,6 +5,7 @@ import com.example.urlshortener.model.ShortenedUrl;
 import com.example.urlshortener.service.ClickTrackerService;
 import com.example.urlshortener.service.storage.ShortenedUrlRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
@@ -12,6 +13,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
+@Profile("prod")
 public class ClickTrackerServiceImpl implements ClickTrackerService {
     @Autowired
     private ShortenedUrlRepository shortenedUrlRepository;
